@@ -1,29 +1,27 @@
-// api/server.js
-const jsonServer = require("json-server");
-const jwt = require("jsonwebtoken");
+const jsonServer = require('json-server');
+const { authenticateUser, authenticateMiddleware } = require('./authenticate');
 const server = jsonServer.create();
-const router = jsonServer.router("db.json");
+const router = jsonServer.router('db.json');
 const middlewares = jsonServer.defaults();
 
 server.use(middlewares);
+server.use(jsonServer.bodyParser);
 
-// JWT middleware
-server.use((req, res, next) => {
-  if (req.headers.authorization) {
-    const token = req.headers.authorization.split(" ")[1];
-    jwt.verify(token, "your-secret-key", (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ message: "Unauthorized" });
-      } else {
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    return res.status(401).json({ message: "No token provided" });
+// Login Route
+server.post('/login', (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const { token } = authenticateUser(email, password);
+    res.status(200).json({ token });
+  } catch (error) {
+    res.status(401).json({ message: error.message });
   }
 });
 
-server.use(router);
+// Authentication middleware
+server.use(authenticateMiddleware);
 
-module.exports = server;
+server.use(router);
+server.listen(3000, () => {
+  console.log('JSON Server is running on port 3000');
+});
